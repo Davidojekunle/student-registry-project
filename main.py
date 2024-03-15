@@ -52,8 +52,8 @@ def init_database():
    image blob
     )
     """)
-    connection.commit()
-    connection.close()
+   connection.commit()
+   connection.close()
 
 
 # def check_id_already_exists(id_number):
