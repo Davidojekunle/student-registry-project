@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter.ttk import Combobox
-from tkinter.filedialog import askopenfilename
-from PIL import Image, ImageTk
+from tkinter.filedialog import askopenfilename, askdirectory
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 import re
 import random
 import sqlite3
@@ -52,21 +52,22 @@ def init_database():
    image blob
     )
     """)
-   connection.commit()
-   connection.close()
+    connection.commit()
+    connection.close()
 
+def check_id_already_exists(id_number):
+    connection = sqlite3.connect('student_accounts.db')
+    cursor = connection.cursor()
 
-# def check_id_already_exists(id_number):
-#    connection = sqlite3.connect('student_accounts.db')
-#    cursor = connection.cursor()
+    cursor.execute(f"""
+   SELECT id_number FROM data WHERE id_number == '{id_number}'
+   """)
 
-#    cursor.execute(f"""
-#    SELECT id_number FROM data WHERE id_number == '{id_number}'
-#    """)
+    connection.commit()
+    response = cursor.fetchall()
+    connection.close()
 
-   # connection.commit()
-   # response = cursor.fetchall()
-   # connection.close()
+    return response
 
 
 def add_data(id_number, password, name, age, gender,
@@ -75,7 +76,7 @@ def add_data(id_number, password, name, age, gender,
     connection = sqlite3.connect('student_accounts.db')
     cursor = connection.cursor()
 
-    cursor.execute("""
+    cursor.execute(f"""
     INSERT INTO data VALUES('{id_number}','{password}', '{name}','{age}', '{gender}','{phone_number}','{student_class}','{email}', ?)
    """, [pic_data])
 
@@ -84,6 +85,8 @@ def add_data(id_number, password, name, age, gender,
     connection.commit()
     connection.close()
 
+
+   
    
 
 def confirmation_box(message):
@@ -122,6 +125,81 @@ def message_box(message):
    messagelb.pack(pady=50)
    pass
 
+
+def draw_student_card(studentpicpath, student_data):
+  labels = '''
+  ID Number:
+  Name:
+  Gender:
+  Age:
+  Class:
+  Contact:
+  Email:'''
+  
+  student_card = Image.open('images/student_card_frame.png')
+  pic =Image.open(studentpicpath).resize((100, 100))
+
+  student_card.paste(pic, (15, 25))
+
+  draw = ImageDraw.Draw(student_card)
+  heading_font = ImageFont.truetype('bahnschrift', 18)
+  labels_font = ImageFont.truetype('arial', 15)
+  data_font = ImageFont.truetype('bahnschrift', 13)
+  draw.text(xy=(150, 60), text='Student Card', fill=(0,0, 0), font=heading_font)
+
+  draw.multiline_text(xy=(15,120), text=labels, fill=(0,0,0),font=labels_font ,spacing=6)
+  draw.multiline_text(xy=(95,120), text=student_data,fill=(0,0,0), 
+                      font=data_font, spacing= 10) 
+  return student_card
+  
+def student_cardd(student_carb_obj):
+   def save_student_card():
+      path = askdirectory()
+
+      if path:
+         print(path)
+
+         student_carb_obj.save(f'{path}/studnet_card.png')
+   def close_cmd():
+      student_cardpage_fn.destroy()
+      root.update()
+      student_login_page()
+      pass
+   student_card_Image = ImageTk.PhotoImage(student_carb_obj)
+   student_cardpage_fn = tk.Frame(root, highlightbackground=bg_color, highlightthickness=3)
+
+   headinglb = tk.Label(student_cardpage_fn, text='Student Card', bg=bg_color, fg='white', font=('Bold', 15))
+   headinglb.place(x=0, y=0 , width=400)
+
+   closebtn = tk.Button(student_cardpage_fn, text='X', bg=bg_color, fg='white', font=('Bold', 13), bd=0,
+                        command=close_cmd)
+   closebtn.place(x=370, y=0)
+   
+   
+   
+
+   student_cardlb =tk.Label(student_cardpage_fn, image=student_card_Image)
+   student_cardlb.image = student_card_Image
+   
+   student_cardlb.place(x=50,y=50)
+
+
+
+   save_student_card_btn = tk.Button(student_cardpage_fn, text='Save Student Card',
+                                     bg=bg_color, fg='white', font=('Bold', 15), bd=1, 
+                                      command=save_student_card )
+   
+   save_student_card_btn.place(x=80, y=375)
+
+   print_student_card_btn = tk.Button(student_cardpage_fn, text='🖨️',
+                                     bg=bg_color, fg='white', font=('Bold', 18), bd=1 )
+   
+   print_student_card_btn.place(x=270, y=375)
+
+
+
+
+   student_cardpage_fn.place(x=50, y=30, width=400, height=450)
 def welcome_page():
 
     def switch_to_student_login():
@@ -162,6 +240,13 @@ def welcome_page():
     welcomepage_frame.configure(width=400,height=420)
 
 def student_login_page():
+    
+    
+    def remove_highlght(entry):
+       if entry ['highlightbackground']  != 'gray':
+          if entry.get() != '':
+             entry.config(highlightcolor=bg_color,highlightbackground ='gray' )
+             
     def show_hide_password():
       if spassword_entry['show'] == "*":
         spassword_entry.config(show='')
@@ -172,7 +257,15 @@ def student_login_page():
     def swtich_to_welcomepage():
        studentloginpage_frame.destroy()
        welcome_page()
-    
+    def login_account():
+       verify_idnumber = check_id_already_exists(id_number=id_number_entry.get())
+       if verify_idnumber:
+          print('valid')
+       else:
+          id_number_entry.configure(highlightcolor='red', highlightbackground='red')
+          id_number_entry.focus()
+          message_box(message="Invalid user_name")
+          print('invalid')
     studentloginpage_frame = tk.Frame(root,highlightbackground=bg_color, 
                                     highlightthickness=3)
 
@@ -190,6 +283,7 @@ def student_login_page():
     id_number_entry = tk.Entry(studentloginpage_frame, font=('Bold', 15),
                             justify=tk.CENTER, highlightcolor=bg_color,
                             highlightbackground='gray', highlightthickness=2)
+    id_number_entry.bind('<KeyRelease>', lambda e: remove_highlght(entry=id_number_entry))
     id_number_entry.place(x=80, y=190)
 
     spassword_lb = tk.Label(studentloginpage_frame, text='Enter Student Password', font=('Bold', 15), fg=bg_color)
@@ -201,7 +295,7 @@ def student_login_page():
     spassword_entry.place(x=80, y=290)
     show_hide_btn = tk.Button(studentloginpage_frame, image=lock_icon , bd=0, command=show_hide_password)
     show_hide_btn.place(x=310, y=280)
-    login_btn = tk.Button(studentloginpage_frame, text="Login", font=('Bold', 15), bg=bg_color, fg='white')
+    login_btn = tk.Button(studentloginpage_frame, text="Login", font=('Bold', 15), bg=bg_color, fg='white', command=login_account)
     login_btn.place(x=95, y=340, width=200, height=40)
 
     forgetpassword_btn = tk.Button(studentloginpage_frame, text="⚠️\n Forgotten Password", fg=bg_color, bd=0)
@@ -301,7 +395,7 @@ def add_account_page():
        for r in range(4):
           generate_id += str(random.randint(0, 9))
 
-      #  check_id_already_exists(id_number=generate_id)
+      #  print(check_id_already_exists(id_number=generate_id))
       #  print('id number;', generate_id)
 
        username= "fstc"+generate_id
@@ -379,7 +473,24 @@ def add_account_page():
                    student_class=student_classbtn.get(),
                    email=student_emailentry.get(),
                    pic_data=pic_data)
-          message_box("Account Successfully Created")
+          
+          data = f"""
+{student_id.get()}
+{student_name_entry.get()}
+{student_gender.get()}
+{student_age_ent.get()}
+{student_age_ent.get()}
+{student_classbtn.get()}
+{student_contactentry.get()}
+{student_emailentry.get()}
+
+"""
+          get_card = draw_student_card(studentpicpath=pic_path.get(),student_data=data)
+        
+
+          student_cardd(student_carb_obj= get_card)
+          add_account_page_frame.destroy()
+          message_box("Account Successfully Created!")
        
 
     add_pic_frame = tk.Frame(add_account_page_frame, highlightbackground=bg_color, highlightthickness=2)
@@ -492,6 +603,7 @@ def add_account_page():
 init_database()
 add_account_page()
 
+#draw_student_card()
 root.mainloop()
 
 
