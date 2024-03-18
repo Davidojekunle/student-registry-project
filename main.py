@@ -6,6 +6,10 @@ import re
 import random
 import sqlite3
 import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import my_email
 root = tk.Tk()
 root.geometry('500x600')
 root.title("Student  Management and Registration system")
@@ -61,6 +65,21 @@ def check_id_already_exists(id_number):
 
     cursor.execute(f"""
    SELECT id_number FROM data WHERE id_number == '{id_number}'
+   """)
+
+    connection.commit()
+    response = cursor.fetchall()
+    connection.close()
+
+    return response
+
+
+def check_valid_password(id_number, password):
+    connection = sqlite3.connect('student_accounts.db')
+    cursor = connection.cursor()
+
+    cursor.execute(f"""
+   SELECT id_number,password FROM data WHERE id_number == '{id_number}' AND password == '{password}'
    """)
 
     connection.commit()
@@ -128,13 +147,14 @@ def message_box(message):
 
 def draw_student_card(studentpicpath, student_data):
   labels = '''
-  ID Number:
+  ID Number: 
   Name:
   Gender:
   Age:
   Class:
   Contact:
-  Email:'''
+  Email:
+  '''
   
   student_card = Image.open('images/student_card_frame.png')
   pic =Image.open(studentpicpath).resize((100, 100))
@@ -239,13 +259,104 @@ def welcome_page():
     welcomepage_frame.pack_propagate(False) 
     welcomepage_frame.configure(width=400,height=420)
 
+def sendmail_to_student(email, message, subject):
+   smtp_server = 'smtp.gmail.com'
+   smtp_port = 587
+
+   username =my_email.email_address
+   password =my_email.password
+
+   msg = MIMEMultipart()
+
+   msg['Subject'] = subject
+   msg['From'] = message
+   msg['To'] = email
+
+   msg.attach(MIMEText(_text=message, _subtype= 'html'))
+
+   smtp_connection = smtplib.SMTP(host=smtp_server, port=smtp_port)
+   smtp_connection.starttls()
+   smtp_connection.login(user=username, password=password)
+   smtp_connection.sendmail(from_addr=username, to_addrs=email, msg=msg.as_string())
+   print('Mail sent successfully!')
+
+
+
+   pass
+
+def forgetpassword_page():
+
+   def recover_password():
+      if check_id_already_exists(id_number=student_ident.get()):
+         print('Correct ID')
+         connection = sqlite3.connect('student_accounts.db')
+         cursor = connection.cursor()
+
+         cursor.execute(f"""
+         SELECT password FROM data WHERE id_number =='{student_ident.get()}'
+                        """)
+
+
+         connection.commit()
+
+         recovered_password = cursor.fetchall()[0][0]
+         print('recovered password:', recovered_password)
+
+         cursor.execute(f"""
+         SELECT email FROM data WHERE id_number =='{student_ident.get()}'
+                        """)
+         connection.commit()
+
+         semail = cursor.fetchall()[0][0]
+         print("Email address: ", semail)
+
+         connection.close()
+
+         confirmation =confirmation_box(message=f""" we will send \n your forgotten password
+ via this Email Address:
+{semail}
+Do you want to continue?""")
+         if confirmation:
+            msg = f'''<h1> Your forgotten password is: </h1>
+            <h2>{recovered_password}</h2>'''
+            sendmail_to_student(email=semail, message=msg, subject='password reovery')
+      else:
+         print('Incorrect ID')
+         message_box(message='Incorrect Student ID')
+         
+
+   forgetpassword_page_fr =tk.Frame(root, highlightbackground=bg_color, highlightthickness=2)
+   forgetpassword_page_fr.place(x=75, y=120, width=350, height=250)
+
+   heading_lb =tk.Label(forgetpassword_page_fr, text= '⚠️ Bitch, Forgotten Password?', font=('Bold', 15), bg=bg_color, fg='white')
+   heading_lb.place(x=0, y=0, width=350)
+
+
+   close_btn = tk.Button(forgetpassword_page_fr, text='X',
+                         font=('Bold', 13), bg=bg_color, fg='white',bd= 0 , command= lambda: forgetpassword_page_fr.destroy())
+   close_btn.place(x=320 ,y=0)
+   
+   student_idlb =tk.Label(forgetpassword_page_fr, text='Enter Student ID Number', font=('Bold', 13))
+   student_idlb.place(x=70, y=40)
+   student_ident = tk.Entry(forgetpassword_page_fr, font=('Bold', 15), justify=tk.CENTER)
+   student_ident.place(x=70, y=70, width=180)
+   
+   info_lb = tk.Label(forgetpassword_page_fr,                      
+text='''Via Email Address
+We will Send You 
+Your Forgotten Password
+''', justify=tk.LEFT)   
+   info_lb.place(x=75, y=110)
+   next_btn = tk.Button(forgetpassword_page_fr, text='Next', font=('Bold', 13),
+                         bg=bg_color,fg='white', command=recover_password)
+   next_btn.place(x=130, y=200, width=80)
 def student_login_page():
     
     
     def remove_highlght(entry):
        if entry ['highlightbackground']  != 'gray':
           if entry.get() != '':
-             entry.config(highlightcolor=bg_color,highlightbackground ='gray' )
+             entry.config(highlightcolor=bg_color,highlightbackground ='gray')
              
     def show_hide_password():
       if spassword_entry['show'] == "*":
@@ -257,15 +368,40 @@ def student_login_page():
     def swtich_to_welcomepage():
        studentloginpage_frame.destroy()
        welcome_page()
+
+
     def login_account():
        verify_idnumber = check_id_already_exists(id_number=id_number_entry.get())
        if verify_idnumber:
-          print('valid')
+          print('id is valid')
+          verify_password = check_valid_password(id_number=id_number_entry.get(),
+                                                 password=spassword_entry.get())
+          if verify_password:
+              print('Password is correct')
+
+          else:
+              print("password is incorrect")
+              spassword_entry.config(highlightcolor='red',
+                                    highlightbackground='red')
+              message_box(message='Incorrect password')
+       
+
+          
        else:
-          id_number_entry.configure(highlightcolor='red', highlightbackground='red')
-          id_number_entry.focus()
-          message_box(message="Invalid user_name")
-          print('invalid')
+          print('id is incorrect')
+          id_number_entry.config(highlightcolor='red',highlightbackground ='red' )
+          message_box(message='Please into a valid ID')
+           
+
+   
+
+        
+         #  else:
+         #  id_number_entry.configure(highlightcolor='red', highlightbackground='red')
+         #  id_number_entry.focus()
+
+         #  message_box(message="Invalid user_name")
+         #  print('invalid')
     studentloginpage_frame = tk.Frame(root,highlightbackground=bg_color, 
                                     highlightthickness=3)
 
@@ -283,22 +419,26 @@ def student_login_page():
     id_number_entry = tk.Entry(studentloginpage_frame, font=('Bold', 15),
                             justify=tk.CENTER, highlightcolor=bg_color,
                             highlightbackground='gray', highlightthickness=2)
-    id_number_entry.bind('<KeyRelease>', lambda e: remove_highlght(entry=id_number_entry))
     id_number_entry.place(x=80, y=190)
+    id_number_entry.bind('<KeyRelease>',
+                          lambda e: remove_highlght(entry=id_number_entry))
 
     spassword_lb = tk.Label(studentloginpage_frame, text='Enter Student Password', font=('Bold', 15), fg=bg_color)
+    
     spassword_lb.place(x=80, y=240)
 
     spassword_entry = tk.Entry(studentloginpage_frame, font=('Bold', 15),
                             justify=tk.CENTER, highlightcolor=bg_color,
                             highlightbackground='gray', highlightthickness=2,show="*" )
     spassword_entry.place(x=80, y=290)
+    spassword_entry.bind('<KeyRelease>',
+                          lambda e: remove_highlght(entry=spassword_entry))
     show_hide_btn = tk.Button(studentloginpage_frame, image=lock_icon , bd=0, command=show_hide_password)
     show_hide_btn.place(x=310, y=280)
     login_btn = tk.Button(studentloginpage_frame, text="Login", font=('Bold', 15), bg=bg_color, fg='white', command=login_account)
     login_btn.place(x=95, y=340, width=200, height=40)
 
-    forgetpassword_btn = tk.Button(studentloginpage_frame, text="⚠️\n Forgotten Password", fg=bg_color, bd=0)
+    forgetpassword_btn = tk.Button(studentloginpage_frame, text="⚠️\n Forgotten Password", fg=bg_color, bd=0, command = forgetpassword_page)
     forgetpassword_btn.place(x=150, y=390)
     studentloginpage_frame.pack(pady=30)
     studentloginpage_frame.pack_propagate(False) 
@@ -458,11 +598,12 @@ def add_account_page():
              read_data = open('temo_pic.png', 'rb')
              pic_data= read_data.read()
              read_data.close()
-
+             
           else:
-             read_data = open('images/add_student_img.png', 'rb')
+             read_data = open('images/add_image.png', 'rb')
              pic_data =read_data.read()
              read_data.close()
+             pic_path.set('images/add_image.png')
 
           add_data(id_number=student_id.get(),
                    password=account_passwordentry.get(),
@@ -601,10 +742,13 @@ def add_account_page():
     add_account_page_frame.pack_propagate(False)
     add_account_page_frame.configure(width=480, height=580)
 init_database()
-add_account_page()
-
+#add_account_page()
+#forgetpassword_page()
 #draw_student_card()
+student_login_page()
+#sendmail_to_student(email='temiojekunle74@gmail.com', message='<h1>Hello World<\h1>', subject='testing')
 root.mainloop()
+
 
 
 
