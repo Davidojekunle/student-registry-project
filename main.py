@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter.ttk import Combobox
 from tkinter.filedialog import askopenfilename, askdirectory
 from PIL import Image, ImageTk, ImageDraw, ImageFont
+from io import BytesIO
 import re
 import random
 import sqlite3
@@ -36,6 +37,7 @@ def init_database():
       
       connection.commit()
       print(cursor.fetchall())
+      
       connection.close()
       
    else:
@@ -147,7 +149,7 @@ def message_box(message):
 
 def draw_student_card(studentpicpath, student_data):
   labels = '''
-  ID Number: 
+  ID :  
   Name:
   Gender:
   Age:
@@ -350,6 +352,149 @@ Your Forgotten Password
    next_btn = tk.Button(forgetpassword_page_fr, text='Next', font=('Bold', 13),
                          bg=bg_color,fg='white', command=recover_password)
    next_btn.place(x=130, y=200, width=80)
+
+def  fectch_student_data(query):
+   connection = sqlite3.connect('student_accounts.db')
+   cursor = connection.cursor()
+
+   cursor.execute(query)
+
+   connection.commit()
+   response = cursor.fetchall()
+   connection.close()
+
+   return response
+
+
+def student_dashboard(student_id):
+   get_student_details = fectch_student_data(f"""
+SELECT name , age , gender, class, phone_number, email FROM data WHERE id_number =='{student_id}'""")
+   print(get_student_details)
+
+   get_student_pic = fectch_student_data(f"""
+SELECT image FROM data WHERE id_number =='{student_id}'""")
+   student_pic = BytesIO(get_student_pic[0][0])
+   print(student_pic)
+
+   def switch(indicator, page):
+      home_btn_indicator.config(bg='#c3c3c3')
+      student_card_btn_indicator.config(bg='#c3c3c3')
+      security_btn_indicator.config(bg='#c3c3c3')
+      edit_data_btn_indicator.config(bg='#c3c3c3')
+
+      indicator.config(bg= bg_color)
+      for  i  in pages_fm.winfo_children():
+         i.destroy()
+         root.update()
+          
+
+      page()
+
+
+   dashboard_fm = tk.Frame(root, highlightbackground=bg_color, highlightthickness=3)
+   def home_page():
+
+      pic_imj_obj = ImageTk.PhotoImage(Image.open(student_pic))
+      home_page_fm = tk.Frame(pages_fm)
+
+      student_pic_lb = tk.Label(home_page_fm, image=pic_imj_obj)
+      student_pic_lb.image  = pic_imj_obj
+      student_pic_lb.place(x=10, y=10)
+
+      home_page_lb = tk.Label(home_page_fm, text='Home Page', font=('Bold',15))
+      home_page_lb.place(x=100, y=200)
+      home_page_fm.pack(fill=tk.BOTH, expand=True)
+   
+
+   def student_card_page():
+      
+      student_card_fm = tk.Frame(pages_fm)
+
+      student_card_lb = tk.Label(student_card_fm, text='student card Page', font=('Bold',15))
+      student_card_lb.place(x=100, y=200)
+      student_card_fm.pack(fill=tk.BOTH, expand=True)
+
+   def security_page():
+      
+         security_page_fm = tk.Frame(pages_fm)
+
+         security_pagelb = tk.Label(security_page_fm, text='security page', font=('Bold',15))
+         security_pagelb.place(x=100, y=200)
+         security_page_fm.pack(fill=tk.BOTH, expand=True)
+
+   def edit_data_page():
+      
+         edit_data_page = tk.Frame(pages_fm)
+
+         edit_data_pagelb = tk.Label(edit_data_page, text='edit data', font=('Bold',15))
+         edit_data_pagelb.place(x=100, y=200)
+         edit_data_page.pack(fill=tk.BOTH, expand=True)
+
+   
+
+
+   options_fm =tk.Frame(dashboard_fm, highlightbackground=bg_color,
+                         highlightthickness=2, bg='#c3c3c3')
+   
+
+   pages_fm = tk.Frame(dashboard_fm, bg='gray')
+   pages_fm.place(x=122, y=5, width=350, height=550)
+   home_page()
+
+   
+
+   home_btn = tk.Button(options_fm, text='Home', font=('Bold', 15),
+                         bg='#c3c3c3', fg=bg_color, bd=0, command=lambda: switch(indicator=home_btn_indicator, page=home_page))
+   home_btn.place(x=10, y=50)
+
+   home_btn_indicator = tk.Label(options_fm, bg=bg_color)
+   home_btn_indicator.place(x=5, y=48, width=3, height=40)
+
+
+   student_card_btn = tk.Button(options_fm, text='Student\n Card', font=('Bold', 15),
+                         bg='#c3c3c3', fg=bg_color, bd=0, justify=tk.LEFT, command=lambda: switch(indicator=student_card_btn_indicator,
+                                                                                                   page=student_card_page))
+   student_card_btn.place(x=10, y=100)
+
+   student_card_btn_indicator = tk.Label(options_fm, bg='#c3c3c3')
+   student_card_btn_indicator.place(x=5, y=100, width=3, height=40)
+
+   security_btn = tk.Button(options_fm, text='Security', font=('Bold', 15),
+                         bg='#c3c3c3', fg=bg_color, bd=0,
+                         command=lambda: switch(indicator=security_btn_indicator,
+                                                 page=security_page))
+   security_btn.place(x=10, y=170)
+
+   security_btn_indicator = tk.Label(options_fm, bg='#c3c3c3')
+   security_btn_indicator.place(x=5, y=170, width=3, height=40)
+
+   edit_data_btn = tk.Button(options_fm, text='Edit Data', font=('Bold', 15),
+                         bg='#c3c3c3', fg=bg_color, bd=0,
+                         command=lambda: switch(indicator=edit_data_btn_indicator
+                                                ,page=edit_data_page))
+   edit_data_btn.place(x=10, y=220)
+
+   edit_data_btn_indicator = tk.Label(options_fm, bg='#c3c3c3')
+   edit_data_btn_indicator.place(x=5, y=220, width=3, height=40)
+
+   logout_btn = tk.Button(options_fm, text='Logout', font=('Bold', 15),
+                         bg='#c3c3c3', fg=bg_color, bd=0)
+   logout_btn.place(x=10, y=500)
+
+   
+
+
+
+
+
+
+
+   options_fm.place(x=0, y=0, width= 120, height=575)
+
+
+   dashboard_fm.pack(pady=5)
+   dashboard_fm.propagate(False)
+   dashboard_fm.configure(width=480, height=580)
 def student_login_page():
     
     
@@ -377,7 +522,13 @@ def student_login_page():
           verify_password = check_valid_password(id_number=id_number_entry.get(),
                                                  password=spassword_entry.get())
           if verify_password:
+              id_number = id_number_entry.get()
               print('Password is correct')
+              studentloginpage_frame.destroy()
+              student_dashboard(student_id=id_number)
+              root.update()
+              
+
 
           else:
               print("password is incorrect")
@@ -620,7 +771,6 @@ def add_account_page():
 {student_name_entry.get()}
 {student_gender.get()}
 {student_age_ent.get()}
-{student_age_ent.get()}
 {student_classbtn.get()}
 {student_contactentry.get()}
 {student_emailentry.get()}
@@ -716,7 +866,7 @@ def add_account_page():
     student_emailentry = tk.Entry(add_account_page_frame,font=('Bold', 15), highlightcolor=bg_color, highlightbackground='gray', highlightthickness=2 )
     student_emailentry.place(x=240, y=160, width=180)
     student_emailentry.bind('<KeyRelease>', 
-                            lambda e: remove_highlght(entry=student_emailentry))
+                            lambda : remove_highlght(entry=student_emailentry))
 
     account_passwordlb = tk.Label(add_account_page_frame,text='Create Account Passowrd', font=('Bold', 12))
     account_passwordlb.place(x=240,y=275)
@@ -745,8 +895,9 @@ init_database()
 #add_account_page()
 #forgetpassword_page()
 #draw_student_card()
-student_login_page()
+#student_login_page()
 #sendmail_to_student(email='temiojekunle74@gmail.com', message='<h1>Hello World<\h1>', subject='testing')
+student_dashboard(student_id='fstc5458')
 root.mainloop()
 
 
