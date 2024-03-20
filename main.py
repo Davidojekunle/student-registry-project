@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter.ttk import Combobox
 from tkinter.filedialog import askopenfilename, askdirectory
-from PIL import Image, ImageTk, ImageDraw, ImageFont
+from PIL import Image, ImageTk, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
 import re
 import random
@@ -393,25 +393,78 @@ SELECT image FROM data WHERE id_number =='{student_id}'""")
 
    dashboard_fm = tk.Frame(root, highlightbackground=bg_color, highlightthickness=3)
    def home_page():
+      student_pic_image_obj = Image.open(student_pic)
+      size = 100
+      mask = Image.new(mode='L', size=(size, size))
 
-      pic_imj_obj = ImageTk.PhotoImage(Image.open(student_pic))
+      draw_circle = ImageDraw.Draw(im=mask)
+      draw_circle.ellipse(xy=(0,0, size, size), fill=255)
+
+      output = ImageOps.fit(image=student_pic_image_obj, size=mask.size,
+                            centering=(1,1))
+      
+      output.putalpha(mask)
+      
+      student_picture = ImageTk.PhotoImage(output)
+
       home_page_fm = tk.Frame(pages_fm)
 
-      student_pic_lb = tk.Label(home_page_fm, image=pic_imj_obj)
-      student_pic_lb.image  = pic_imj_obj
+      student_pic_lb = tk.Label(home_page_fm, image=student_picture)
+      student_pic_lb.image  = student_picture
       student_pic_lb.place(x=10, y=10)
 
-      home_page_lb = tk.Label(home_page_fm, text='Home Page', font=('Bold',15))
-      home_page_lb.place(x=100, y=200)
+      hi_lb = tk.Label(home_page_fm, text=f'Welcome {get_student_details[0][0]}', 
+                       font=('Bold', 15))
+      hi_lb.place(x=130, y=50)
+
+      student_details =f"""
+STUDENT ID: {student_id}\n
+Name: {get_student_details[0][0]}\n
+Age:{get_student_details[0][1]}\n
+Gender: {get_student_details[0][2]}\n
+Class: {get_student_details[0][3]}\n
+Contact: {get_student_details[0][4]}\n
+Email: {get_student_details[0][5]}\n
+"""
+      student_details_lb = tk.Label(home_page_fm, text=student_details,
+                                    font=('Bold', 13), justify=tk.LEFT)
+      student_details_lb.place(x=20,y=130)
+     
       home_page_fm.pack(fill=tk.BOTH, expand=True)
    
 
    def student_card_page():
-      
+      def save_student_card():
+       path = askdirectory()
+
+       if path:
+         print(path)
+
+         student_card_image_obj.save(f'{path}/student_card.png')
+
+
       student_card_fm = tk.Frame(pages_fm)
 
-      student_card_lb = tk.Label(student_card_fm, text='student card Page', font=('Bold',15))
-      student_card_lb.place(x=100, y=200)
+      student_details =f"""
+{student_id}
+{get_student_details[0][0]}
+{get_student_details[0][2]}
+{get_student_details[0][1]}
+{get_student_details[0][3]}
+{get_student_details[0][4]}
+{get_student_details[0][5]}
+"""
+      student_card_image_obj = draw_student_card(studentpicpath=student_pic,
+                                                 student_data=student_details)
+      student_card_img  =ImageTk.PhotoImage(student_card_image_obj)
+      cardlb = tk.Label(student_card_fm, image=student_card_img)
+      cardlb.image = student_card_img
+      cardlb.place(x=20, y=50)
+      
+      save_student_card_btn = tk.Button(student_card_fm, text= 'Save Student Card',font=('Bold', 15),
+                                        bd=1, fg= 'white', bg=bg_color, command=save_student_card )
+      save_student_card_btn.place(x=80, y=400)
+      
       student_card_fm.pack(fill=tk.BOTH, expand=True)
 
    def security_page():
