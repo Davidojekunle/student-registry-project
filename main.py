@@ -374,8 +374,14 @@ SELECT name , age , gender, class, phone_number, email FROM data WHERE id_number
    get_student_pic = fectch_student_data(f"""
 SELECT image FROM data WHERE id_number =='{student_id}'""")
    student_pic = BytesIO(get_student_pic[0][0])
-   print(student_pic)
+   
 
+   def logout():
+       confirm = confirmation_box('Are you sure you want to log out')
+       if confirm:
+          dashboard_fm.destroy()
+          welcome_page()
+          root.update()
    def switch(indicator, page):
       home_btn_indicator.config(bg='#c3c3c3')
       student_card_btn_indicator.config(bg='#c3c3c3')
@@ -389,6 +395,7 @@ SELECT image FROM data WHERE id_number =='{student_id}'""")
           
 
       page()
+
 
 
    dashboard_fm = tk.Frame(root, highlightbackground=bg_color, highlightthickness=3)
@@ -460,6 +467,15 @@ Email: {get_student_details[0][5]}\n
       cardlb = tk.Label(student_card_fm, image=student_card_img)
       cardlb.image = student_card_img
       cardlb.place(x=20, y=50)
+
+
+
+
+
+
+
+
+      
       
       save_student_card_btn = tk.Button(student_card_fm, text= 'Save Student Card',font=('Bold', 15),
                                         bd=1, fg= 'white', bg=bg_color, command=save_student_card )
@@ -467,20 +483,189 @@ Email: {get_student_details[0][5]}\n
       
       student_card_fm.pack(fill=tk.BOTH, expand=True)
 
-   def security_page():
+   def security_page():    
+          def show_hide_password():
+            if current_passwordent['show'] == "*":
+               current_passwordent.config(show='')
+               show_hide_btn.config(image=unlocked_icon)
+            
+            else:
+              current_passwordent.config(show="*")
+              show_hide_btn.config(image=lock_icon)
+              
       
-         security_page_fm = tk.Frame(pages_fm)
+          security_page_fm = tk.Frame(pages_fm)
+          current_passwordlb = tk.Label(security_page_fm, text='Your current password',
+                                       font=('Bold',15))
+          current_passwordlb.place(x=80, y=30)
 
-         security_pagelb = tk.Label(security_page_fm, text='security page', font=('Bold',15))
-         security_pagelb.place(x=100, y=200)
-         security_page_fm.pack(fill=tk.BOTH, expand=True)
+          current_passwordent = tk.Entry(security_page_fm, font=('Bold', 15),
+                                        justify=tk.CENTER, show='*')
+          current_passwordent.place(x=50, y=80)
+          def check_pass():
+            if spass != current_passwordent.get():
+               message_box('wrong password')
+
+
+          current_password =fectch_student_data(f"SELECT password FROM data WHERE id_number== '{student_id}'")
+          spass = current_password[0][0]
+          print(spass)
+          def check_pass():
+            if spass != current_passwordent.get():
+               message_box('wrong password')
+
+            else:
+               if new_passwordent.get() != '':
+                  confirm  = confirmation_box('Do you want to change \n ypur password')
+                  if confirm:
+                     connection = sqlite3.connect('student_accounts.db')
+                     cursor = connection.cursor()
+                     cursor.execute(f"""UPDATE data SET password = '{new_passwordent.get()}'
+                                     WHERE id_number =='{student_id}'""")
+
+                     connection.commit()
+                     connection.close()
+  
+                     message_box("You have successfuly changed\n your password")
+                     current_passwordent.delete(0, tk.END)
+                     new_passwordent.delete(0, tk.END)
+                      
+
+               else:
+                  message_box('Enter new Password')
+             
+          
+          show_hide_btn = tk.Button(security_page_fm, image=lock_icon, bd=0,
+                                    command=show_hide_password)
+          show_hide_btn.place(x=280, y=70)
+
+          new_passwordlb = tk.Label(security_page_fm, text='Set New password',
+                                    font=('Bold', 12))
+          new_passwordlb.place(x=100, y=140)
+
+
+          new_passwordent = tk.Entry(security_page_fm,font=('Bold', 15), 
+                                     justify=tk.CENTER)
+          new_passwordent.place(x=50, y=180)
+
+          change_psssword_btn = tk.Button(security_page_fm, text="change password",
+                                          font=('Bold', 15), command=check_pass)
+          change_psssword_btn.place(x=30, y=250,width=290)
+          
+          security_page_fm.pack(fill=tk.BOTH, expand=True)
+
+
 
    def edit_data_page():
+         def check_input():
+            nonlocal get_student_details,  student_pic
+
+            if student_name_entry.get() == '':
+              message_box('Stuent Full name is required')
+
+            elif student_contactentry.get() =='':
+               message_box('Student Contact Entry is Required')
+
+            elif student_emailentry.get() == '':
+               message_box("Studnet Email Address is Required")
+            else:
+               if pic_path.get() != '':
+                  new_student_pic = Image.open(pic_path.get()).resize((100,100))
+                  new_student_pic.save('temp_pic.png')
+
+                  with open('temp_pic.png', 'rb') as read_new_pic:
+                     new_picture_binary = read_new_pic.read()
+                     read_new_pic.close()
+
+                     connection = sqlite3.connect('student_accounts.db')
+                     cursor = connection.cursor()
+
+                     cursor.execute(f"UPDATE data SET image=? WHERE id_number =='{student_id}' ",
+                                   [new_picture_binary] )
+                     
+                     connection.commit()
+                     connection.close()
+                     get_student_details = fectch_student_data(f"""
+SELECT name , age , gender, class, phone_number, email FROM data WHERE id_number =='{student_id}'""")
+                     print(get_student_details)
+
+                     get_student_pic = fectch_student_data(f"""
+SELECT image FROM data WHERE id_number =='{student_id}'""")
+                     student_pic = BytesIO(get_student_pic[0][0])
+                     message_box('Data successfully updated')
+
+               name = student_name_entry.get()
+               email = student_emailentry.get()
+               contact_number = student_contactentry.get()
+               connection = sqlite3.connect('student_accounts.db')
+               cursor = connection.cursor()
+               cursor.execute(f"""
+UPDATE data SET name='{name}', email='{email}', phone_number='{contact_number}' WHERE id_number =='{student_id}'
+""") 
+               
+               connection.commit()
+               connection.close()
+               message_box('Data sucessfully Updated')
+
+         
+         pic_path = tk.StringVar()
+
+
+         pic_path.set('')
+
+         def open_pic():
+            path = askopenfilename()
+
+
+            if path:
+               img = ImageTk.PhotoImage(Image.open(path).resize((100, 100)))
+               pic_path.set(path)
+               add_pic_button.config(image=img)
+               add_pic_button.image = img
+
+
+         student_current_pic = ImageTk.PhotoImage(Image.open(student_pic))
       
          edit_data_page = tk.Frame(pages_fm)
 
-         edit_data_pagelb = tk.Label(edit_data_page, text='edit data', font=('Bold',15))
-         edit_data_pagelb.place(x=100, y=200)
+         add_pic_frame = tk.Frame(edit_data_page, highlightbackground=bg_color, highlightthickness=2)
+         add_pic_button = tk.Button(add_pic_frame, image=student_current_pic, bd=0, command=open_pic)
+         add_pic_button.image = student_current_pic
+         add_pic_button.pack()
+         student_namelb = tk.Label(edit_data_page, text="student Full Name. ", font=('Bold', 12))
+         student_namelb.place(x=5, y=130)
+
+
+         student_name_entry = tk.Entry(edit_data_page,font=('Bold', 15),
+                                highlightcolor=bg_color, highlightbackground='grey',
+                                    highlightthickness=2 )
+         student_name_entry.place(x=5, y=150, width=180)
+         student_name_entry.insert(tk.END, get_student_details[0][0])
+
+
+         student_contactlb = tk.Label(edit_data_page, text=' Contact Phone Number', font=('Bold', 12))
+         student_contactlb.place(x=5, y=210)
+    
+
+         student_contactentry = tk.Entry(edit_data_page,font=('Bold', 15), highlightcolor=bg_color, highlightbackground='gray', highlightthickness=2 )
+         student_contactentry.place(x=5, y=235, width=180)
+         student_contactentry.insert(tk.END, get_student_details[0][4])
+         
+
+
+         student_emaillb = tk.Label(edit_data_page, text='Student Email', font=('Bold', 12))
+         student_emaillb.place(x=5, y=280)
+         student_emailentry = tk.Entry(edit_data_page,font=('Bold', 15), highlightcolor=bg_color, highlightbackground='gray', highlightthickness=2 )
+         student_emailentry.place(x=5, y=305, width=180)
+         student_emailentry.insert(tk.END, get_student_details[0][5])
+
+         update_data_button = tk.Button(edit_data_page, text='Update',font=('Bold',15),
+                                        fg='white', bg=bg_color , bd=0 , command=check_input)
+         
+         update_data_button.place(x=80, y=470, width= 180)
+         
+
+         add_pic_frame.place(x=5, y=5, width=105, height=105)
          edit_data_page.pack(fill=tk.BOTH, expand=True)
 
    
@@ -531,7 +716,7 @@ Email: {get_student_details[0][5]}\n
    edit_data_btn_indicator.place(x=5, y=220, width=3, height=40)
 
    logout_btn = tk.Button(options_fm, text='Logout', font=('Bold', 15),
-                         bg='#c3c3c3', fg=bg_color, bd=0)
+                         bg='#c3c3c3', fg=bg_color, bd=0, command=logout)
    logout_btn.place(x=10, y=500)
 
    
@@ -647,17 +832,110 @@ def student_login_page():
     studentloginpage_frame.pack(pady=30)
     studentloginpage_frame.pack_propagate(False) 
     studentloginpage_frame.configure(width=400,height=450)
+
+def admin_dashboard():
+
+   def switch(indicator):
+         home_btn_indicator.config(bg='#c3c3c3')
+         find_student_btn_indicator.config(bg='#c3c3c3')
+         announcement_btn_indicator.config(bg='#c3c3c3')
+
+         indicator.config(bg=bg_color)
+
+   def home_page():
+      home_page_fm = tk.Frame(pages_fm)
+      admin_icon_lb = tk.Label(home_page_fm, image=login_admin_icon)
+      admin_icon_lb.imade = login_admin_icon
+      home_page_fm.pack(fill=tk.BOTH, expand=True)
+         
+
+         
+   dashboard_fm = tk.Frame(root, highlightbackground=bg_color,
+                           highlightthickness=3)
+   
+   options_fm = tk.Frame(dashboard_fm, highlightbackground=bg_color,
+                         highlightthickness=2, bg='#c3c3c3')
+   home_btn = tk.Button(options_fm, text='Home', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, command=lambda: switch(indicator=home_btn_indicator))
+   home_btn.place(x=10, y=50)
+   
+   home_btn_indicator = tk.Label(options_fm, text='', bg= bg_color)
+   home_btn_indicator.place(x=5, y=48, width=3, height=40 )
+
+   
+   find_student_btn = tk.Button(options_fm, text='Find\nStudent', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command=lambda: switch(indicator=find_student_btn_indicator))
+   find_student_btn.place(x=10, y=100)
+   
+   find_student_btn_indicator = tk.Label(options_fm, text='', bg= '#c3c3c3')
+   find_student_btn_indicator.place(x=5, y=108, width=3, height=40 )
+
+   announcement_btn = tk.Button(options_fm, text='Announce\n-ment📢', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command= lambda : switch(indicator=announcement_btn_indicator))
+   announcement_btn.place(x=10, y=170)
+   
+   announcement_btn_indicator = tk.Label(options_fm, text='', bg= '#c3c3c3')
+   announcement_btn_indicator.place(x=5, y=180, width=3, height=40 )
+
+   logout_btn = tk.Button(options_fm, text='Logout', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT)
+   logout_btn.place(x=10, y=500)
+   def home_page():
+      home_page_fm = tk.Frame(pages_fm)
+
+      admin_icon_lb = tk.Label(home_page_fm, image=login_admin_icon)
+      admin_icon_lb.image = login_admin_icon
+      admin_icon_lb.place(x=10, y=10)
+      home_page_fm.pack(fill=tk.BOTH, expand=True)
+          
+      hi_lb = tk.Label(home_page_fm, text='!hi Admin', font=('Bold', 15))
+      hi_lb.place(x=120, y=40)
+
+      
+      student_numbers_lb = tk.Label(home_page_fm, text='', font=('Bold', 15),
+                                    justify=tk.LEFT)
+      student_numbers_lb.place(x=20, y=170)
+      class_list_lb = tk.Label(home_page_fm, text='Number of Students By Class ⬇️',
+                               font=('Bold',13), bg=bg_color, fg='white')
+      class_list_lb.place(x=20, y=130)
+      for  i in class_list:    
+       result = fectch_student_data(query=f"SELECT COUNT (*) FROM  data WHERE class =='{i}'")
+       student_numbers_lb['text'] += f"{i} Class: {result[0][0]}\n\n"
+       print(i, result)
+   
+
+   pages_fm = tk.Frame(dashboard_fm,bg='gray')
+   pages_fm.place(x=122, y=5, width=350, height=550)
+   home_page()
+   options_fm.place(x=0,y=0, width=120, height=575)
+
+   dashboard_fm.pack(pady=5)
+   dashboard_fm.pack_propagate(False)
+   dashboard_fm.configure(width=480, height=580)
 def admin_login_page():
     def show_hide_password():
-        if spassword_entry['show'] == "*":
-            spassword_entry.config(show='')
+        if password_entry['show'] == "*":
+            password_entry.config(show='')
             show_hide_btn.config(image=unlocked_icon)
         else:
-            spassword_entry.config(show="*")
+            password_entry.config(show="*")
             show_hide_btn.config(image=lock_icon)
     def switch_to_welcomescreen():
        adminlogin_page_frame.destroy()
        welcome_page()
+
+    def login_account():
+       if username_entry.get() == 'admin':
+          if  password_entry.get() == 'admin':
+             adminlogin_page_frame.destroy()
+             admin_dashboard()
+             root.update()
+          else:
+             message_box(' wrong Password ')
+       else:
+          message_box('Wrong user name')
+    
+
 
     adminlogin_page_frame= tk.Frame(root,highlightbackground=bg_color, 
                                         highlightthickness=3)
@@ -673,21 +951,21 @@ def admin_login_page():
     id_number_lb = tk.Label(adminlogin_page_frame, text='Enter Admin User Name', font=('Bold', 15), fg=bg_color)
     id_number_lb.place(x=80, y=140)
 
-    id_number_entry = tk.Entry(adminlogin_page_frame, font=('Bold', 15),
+    username_entry = tk.Entry(adminlogin_page_frame, font=('Bold', 15),
                             justify=tk.CENTER, highlightcolor=bg_color,
                             highlightbackground='gray', highlightthickness=2)
-    id_number_entry.place(x=80, y=190)
+    username_entry.place(x=80, y=190)
 
-    spassword_lb = tk.Label(adminlogin_page_frame, text='Enter  Password', font=('Bold', 15), fg=bg_color)
-    spassword_lb.place(x=80, y=240)
+    password_lb = tk.Label(adminlogin_page_frame, text='Enter  Password', font=('Bold', 15), fg=bg_color)
+    password_lb.place(x=80, y=240)
 
-    spassword_entry = tk.Entry(adminlogin_page_frame, font=('Bold', 15),
+    password_entry = tk.Entry(adminlogin_page_frame, font=('Bold', 15),
                             justify=tk.CENTER, highlightcolor=bg_color,
                             highlightbackground='gray', highlightthickness=2,show="*" )
-    spassword_entry.place(x=80, y=290)
+    password_entry.place(x=80, y=290)
     show_hide_btn = tk.Button(adminlogin_page_frame, image=lock_icon , bd=0, command=show_hide_password)
     show_hide_btn.place(x=310, y=280)
-    login_btn = tk.Button(adminlogin_page_frame, text="Login", font=('Bold', 15), bg=bg_color, fg='white')
+    login_btn = tk.Button(adminlogin_page_frame, text="Login", font=('Bold', 15), bg=bg_color, fg='white', command=login_account)
     login_btn.place(x=95, y=340, width=200, height=40)
 
     adminlogin_page_frame.pack(pady=30)
@@ -841,6 +1119,7 @@ def add_account_page():
     add_pic_button = tk.Button(add_pic_frame, image=add_studentimg, bd=0, command=open_pic)
     add_pic_button.pack()
     add_pic_frame.place(x=5, y=5, width=105, height=105)
+
     student_namelb = tk.Label(add_account_page_frame, text="Enter  Full Name. ", font=('Bold', 12))
     student_namelb.place(x=5, y=130)
 
@@ -919,7 +1198,7 @@ def add_account_page():
     student_emailentry = tk.Entry(add_account_page_frame,font=('Bold', 15), highlightcolor=bg_color, highlightbackground='gray', highlightthickness=2 )
     student_emailentry.place(x=240, y=160, width=180)
     student_emailentry.bind('<KeyRelease>', 
-                            lambda : remove_highlght(entry=student_emailentry))
+                            lambda e: remove_highlght(entry=student_emailentry))
 
     account_passwordlb = tk.Label(add_account_page_frame,text='Create Account Passowrd', font=('Bold', 12))
     account_passwordlb.place(x=240,y=275)
@@ -950,7 +1229,10 @@ init_database()
 #draw_student_card()
 #student_login_page()
 #sendmail_to_student(email='temiojekunle74@gmail.com', message='<h1>Hello World<\h1>', subject='testing')
-student_dashboard(student_id='fstc5458')
+#student_dashboard(student_id='fstc1178')
+welcome_page()
+#admin_dashboard()
+#admin_login_page()
 root.mainloop()
 
 
