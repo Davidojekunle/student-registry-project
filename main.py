@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter.ttk import Combobox
+from tkinter.ttk import Combobox, Treeview
 from tkinter.filedialog import askopenfilename, askdirectory
 from PIL import Image, ImageTk, ImageDraw, ImageFont, ImageOps
 from io import BytesIO
@@ -10,7 +10,10 @@ import os
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 import my_email
+
 root = tk.Tk()
 root.geometry('500x600')
 root.title("Student  Management and Registration system")
@@ -36,7 +39,7 @@ def init_database():
        """)
       
       connection.commit()
-      print(cursor.fetchall())
+      
       
       connection.close()
       
@@ -174,19 +177,20 @@ def draw_student_card(studentpicpath, student_data):
                       font=data_font, spacing= 10) 
   return student_card
   
-def student_cardd(student_carb_obj):
+def student_cardd(student_carb_obj, bypass_login_page= False):
    def save_student_card():
       path = askdirectory()
 
       if path:
-         print(path)
+         
 
          student_carb_obj.save(f'{path}/studnet_card.png')
    def close_cmd():
       student_cardpage_fn.destroy()
-      root.update()
-      student_login_page()
-      pass
+      if not bypass_login_page:
+         root.update()
+         student_login_page()
+       
    student_card_Image = ImageTk.PhotoImage(student_carb_obj)
    student_cardpage_fn = tk.Frame(root, highlightbackground=bg_color, highlightthickness=3)
 
@@ -261,7 +265,7 @@ def welcome_page():
     welcomepage_frame.pack_propagate(False) 
     welcomepage_frame.configure(width=400,height=420)
 
-def sendmail_to_student(email, message, subject):
+def sendmail_to_student(email, message, subject, file_data=None):
    smtp_server = 'smtp.gmail.com'
    smtp_port = 587
 
@@ -275,12 +279,18 @@ def sendmail_to_student(email, message, subject):
    msg['To'] = email
 
    msg.attach(MIMEText(_text=message, _subtype= 'html'))
+   if file_data:
+        attachment = MIMEBase('application', 'octet-stream')
+        attachment.set_payload(file_data)
+        encoders.encode_base64(attachment)
+        attachment.add_header('Content-Disposition', 'attachment', filename='file.pdf')
+        msg.attach(attachment)
 
    smtp_connection = smtplib.SMTP(host=smtp_server, port=smtp_port)
    smtp_connection.starttls()
    smtp_connection.login(user=username, password=password)
    smtp_connection.sendmail(from_addr=username, to_addrs=email, msg=msg.as_string())
-   print('Mail sent successfully!')
+   
 
 
 
@@ -290,7 +300,7 @@ def forgetpassword_page():
 
    def recover_password():
       if check_id_already_exists(id_number=student_ident.get()):
-         print('Correct ID')
+         
          connection = sqlite3.connect('student_accounts.db')
          cursor = connection.cursor()
 
@@ -302,7 +312,7 @@ def forgetpassword_page():
          connection.commit()
 
          recovered_password = cursor.fetchall()[0][0]
-         print('recovered password:', recovered_password)
+         
 
          cursor.execute(f"""
          SELECT email FROM data WHERE id_number =='{student_ident.get()}'
@@ -310,7 +320,7 @@ def forgetpassword_page():
          connection.commit()
 
          semail = cursor.fetchall()[0][0]
-         print("Email address: ", semail)
+        
 
          connection.close()
 
@@ -323,7 +333,7 @@ Do you want to continue?""")
             <h2>{recovered_password}</h2>'''
             sendmail_to_student(email=semail, message=msg, subject='password reovery')
       else:
-         print('Incorrect ID')
+         
          message_box(message='Incorrect Student ID')
          
 
@@ -445,8 +455,6 @@ Email: {get_student_details[0][5]}\n
        path = askdirectory()
 
        if path:
-         print(path)
-
          student_card_image_obj.save(f'{path}/student_card.png')
 
 
@@ -482,7 +490,7 @@ Email: {get_student_details[0][5]}\n
       save_student_card_btn.place(x=80, y=400)
       
       student_card_fm.pack(fill=tk.BOTH, expand=True)
-
+   
    def security_page():    
           def show_hide_password():
             if current_passwordent['show'] == "*":
@@ -509,7 +517,7 @@ Email: {get_student_details[0][5]}\n
 
           current_password =fectch_student_data(f"SELECT password FROM data WHERE id_number== '{student_id}'")
           spass = current_password[0][0]
-          print(spass)
+          
           def check_pass():
             if spass != current_passwordent.get():
                message_box('wrong password')
@@ -756,7 +764,7 @@ def student_login_page():
     def login_account():
        verify_idnumber = check_id_already_exists(id_number=id_number_entry.get())
        if verify_idnumber:
-          print('id is valid')
+          
           verify_password = check_valid_password(id_number=id_number_entry.get(),
                                                  password=spassword_entry.get())
           if verify_password:
@@ -769,7 +777,7 @@ def student_login_page():
 
 
           else:
-              print("password is incorrect")
+              
               spassword_entry.config(highlightcolor='red',
                                     highlightbackground='red')
               message_box(message='Incorrect password')
@@ -777,7 +785,7 @@ def student_login_page():
 
           
        else:
-          print('id is incorrect')
+          
           id_number_entry.config(highlightcolor='red',highlightbackground ='red' )
           message_box(message='Please into a valid ID')
            
@@ -825,7 +833,7 @@ def student_login_page():
     show_hide_btn = tk.Button(studentloginpage_frame, image=lock_icon , bd=0, command=show_hide_password)
     show_hide_btn.place(x=310, y=280)
     login_btn = tk.Button(studentloginpage_frame, text="Login", font=('Bold', 15), bg=bg_color, fg='white', command=login_account)
-    login_btn.place(x=95, y=340, width=200, height=40)
+    login_btn.place(x=95, y=340, width=200, height=40) 
 
     forgetpassword_btn = tk.Button(studentloginpage_frame, text="⚠️\n Forgotten Password", fg=bg_color, bd=0, command = forgetpassword_page)
     forgetpassword_btn.place(x=150, y=390)
@@ -834,52 +842,29 @@ def student_login_page():
     studentloginpage_frame.configure(width=400,height=450)
 
 def admin_dashboard():
+   
 
-   def switch(indicator):
+   def switch(indicator, page):
          home_btn_indicator.config(bg='#c3c3c3')
          find_student_btn_indicator.config(bg='#c3c3c3')
          announcement_btn_indicator.config(bg='#c3c3c3')
-
+         send_results_btn_indicator.config(bg='#c3c3c3')
          indicator.config(bg=bg_color)
+         for  i  in pages_fm.winfo_children():
+           i.destroy()
+         root.update()
+          
 
-   def home_page():
-      home_page_fm = tk.Frame(pages_fm)
-      admin_icon_lb = tk.Label(home_page_fm, image=login_admin_icon)
-      admin_icon_lb.imade = login_admin_icon
-      home_page_fm.pack(fill=tk.BOTH, expand=True)
-         
+         page()
+        
+   
+   def logout():
+       confirm = confirmation_box('Are you sure you want to log out')
+       if confirm:
+          dashboard_fm.destroy()
+          welcome_page()
+          root.update()
 
-         
-   dashboard_fm = tk.Frame(root, highlightbackground=bg_color,
-                           highlightthickness=3)
-   
-   options_fm = tk.Frame(dashboard_fm, highlightbackground=bg_color,
-                         highlightthickness=2, bg='#c3c3c3')
-   home_btn = tk.Button(options_fm, text='Home', font=('Bold', 15),
-                        fg= bg_color, bg='#c3c3c3', bd=0, command=lambda: switch(indicator=home_btn_indicator))
-   home_btn.place(x=10, y=50)
-   
-   home_btn_indicator = tk.Label(options_fm, text='', bg= bg_color)
-   home_btn_indicator.place(x=5, y=48, width=3, height=40 )
-
-   
-   find_student_btn = tk.Button(options_fm, text='Find\nStudent', font=('Bold', 15),
-                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command=lambda: switch(indicator=find_student_btn_indicator))
-   find_student_btn.place(x=10, y=100)
-   
-   find_student_btn_indicator = tk.Label(options_fm, text='', bg= '#c3c3c3')
-   find_student_btn_indicator.place(x=5, y=108, width=3, height=40 )
-
-   announcement_btn = tk.Button(options_fm, text='Announce\n-ment📢', font=('Bold', 15),
-                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command= lambda : switch(indicator=announcement_btn_indicator))
-   announcement_btn.place(x=10, y=170)
-   
-   announcement_btn_indicator = tk.Label(options_fm, text='', bg= '#c3c3c3')
-   announcement_btn_indicator.place(x=5, y=180, width=3, height=40 )
-
-   logout_btn = tk.Button(options_fm, text='Logout', font=('Bold', 15),
-                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT)
-   logout_btn.place(x=10, y=500)
    def home_page():
       home_page_fm = tk.Frame(pages_fm)
 
@@ -902,16 +887,297 @@ def admin_dashboard():
        result = fectch_student_data(query=f"SELECT COUNT (*) FROM  data WHERE class =='{i}'")
        student_numbers_lb['text'] += f"{i} Class: {result[0][0]}\n\n"
        print(i, result)
+
+
+       
+   
+   def send_results_page():
+    def send_results():
+        student_id = student_id_entry.get()
+        file_path = file_path_entry.get()
+
+        if student_id and file_path:
+            student_email = fectch_student_data(f"SELECT email FROM data WHERE id_number = '{student_id}'")
+
+            if student_email:
+                student_email = student_email[0][0]
+                subject = "Results from Admin"
+                message = f"<h2>Results/File from Admin</h2><p>Please find the attached file.</p>"
+
+                try:
+                    with open(file_path, "rb") as file:
+                        file_data = file.read()
+                        sendmail_to_student(student_email, message, subject, file_data)
+                    message_box("File sent successfully!")
+                except FileNotFoundError:
+                    message_box("File not found. Please check the file path.")
+            else:
+                message_box("Invalid student ID.")
+        else:
+            message_box("Please enter the\n student ID and file path.")
+
+    def browse_file():
+        file_path = askopenfilename()
+        file_path_entry.delete(0, tk.END)  # Clear previous entry
+        file_path_entry.insert(0, file_path)  # Insert selected file path
+
+    send_results_page_fm = tk.Frame(pages_fm)
+
+    student_id_label = tk.Label(send_results_page_fm, text="Student ID:", font=('Bold', 12))
+    student_id_label.pack(pady=10)
+
+    student_id_entry = tk.Entry(send_results_page_fm, font=('Bold', 12))
+    student_id_entry.pack(fill=tk.X, padx=10)
+
+    file_path_label = tk.Label(send_results_page_fm, text="File Path:", font=('Bold', 12))
+    file_path_label.pack(pady=10)
+
+    file_path_entry = tk.Entry(send_results_page_fm, font=('Bold', 12))
+    file_path_entry.pack(fill=tk.X, padx=10)
+
+    browse_button = tk.Button(send_results_page_fm, text="Browse", command=browse_file, font=('Bold', 12), bg=bg_color, fg='white')
+    browse_button.pack(pady=10)
+
+    send_button = tk.Button(send_results_page_fm, text="Send Results", command=send_results, font=('Bold', 12), bg=bg_color, fg='white')
+    send_button.pack(pady=10)
+
+    send_results_page_fm.pack(fill=tk.BOTH, expand=True)
+
+
+
+
+   def announcement_page():
+    def send_announcement():
+        selected_classes = [class_listbox.get(idx) for idx in class_listbox.curselection()]
+        announcement_subject = subject_entry.get()
+        announcement_text = announcement_entry.get("1.0", tk.END)
+
+        if selected_classes and announcement_text and announcement_subject:
+            for selected_class in selected_classes:
+                students = fectch_student_data(f"SELECT email FROM data WHERE class = '{selected_class}'")
+                emails = [student[0] for student in students]
+
+                subject = f"{announcement_subject} - {selected_class} Class"
+                message = f"<h2>{announcement_subject}</h2><p>{announcement_text}</p>"
+
+                for email in emails:
+                    sendmail_to_student(email, message, subject)
+
+            message_box("Announcement sent successfully!")
+        else:
+            message_box("Please select at least one class,\n enter the subject,\n and enter the announcement text.")
+
+    announcement_page_fm = tk.Frame(pages_fm)
+
+    class_label = tk.Label(announcement_page_fm, text="Select Classes:", font=('Bold', 12))
+    class_label.pack(pady=10)
+
+    class_listbox = tk.Listbox(announcement_page_fm, selectmode=tk.MULTIPLE, height=5)
+    class_listbox.pack(fill=tk.X, padx=10)
+    for class_name in class_list:
+        class_listbox.insert(tk.END, class_name)
+
+    subject_label = tk.Label(announcement_page_fm, text="Subject:", font=('Bold', 12))
+    subject_label.pack(pady=10)
+
+    subject_entry = tk.Entry(announcement_page_fm, font=('Bold', 12))
+    subject_entry.pack(fill=tk.X, padx=10)
+
+    announcement_label = tk.Label(announcement_page_fm, text="Announcement:", font=('Bold', 12))
+    announcement_label.pack(pady=10)
+
+    announcement_entry = tk.Text(announcement_page_fm, height=10)
+    announcement_entry.pack(padx=10)
+
+    send_button = tk.Button(announcement_page_fm, text="Send Announcement", command=send_announcement, font=('Bold', 12), bg=bg_color, fg='white')
+    send_button.pack(pady=10)
+
+    announcement_page_fm.pack(fill=tk.BOTH, expand=True)
+   
+   def find_student_page():
+      def find_student():
+
+        
+         if  find_by_option_btn.get() == 'ID':
+            found_data = fectch_student_data(query=f"""
+SELECT id_number, name, class, gender FROM data 
+WHERE id_number == '{search_input.get()}'
+""")
+            
+         elif  find_by_option_btn.get() == 'Name':
+            found_data = fectch_student_data(query=f"""
+SELECT id_number, name, class, gender FROM data 
+WHERE name LIKE '%{search_input.get()}%'""")
+            
+
+         elif  find_by_option_btn.get() == 'Class':
+            found_data = fectch_student_data(query=f"""
+SELECT id_number, name, class, gender FROM data 
+WHERE class == '{search_input.get()}'""")
+            
+            
+         elif  find_by_option_btn.get() == 'Gender':
+            found_data = fectch_student_data(query=f"""
+SELECT id_number, name, class, gender FROM data 
+WHERE gender  == '{search_input.get()}'""")
+            
+            
+
+         if found_data:
+            for item in record_table.get_children():
+               record_table.delete(item)
+
+            for details in found_data:
+               record_table.insert(parent='', index='end', values=details)
+
+         else:
+            for item in record_table.get_children():
+               record_table.delete(item)
+      
+      def genrate_student_card():
+         selection = record_table.selection() 
+         selected_id = record_table.item(item=selection, option='values')[0]
+         get_student_details = fectch_student_data(f"""
+SELECT name , age , gender, class, phone_number, email FROM data WHERE id_number =='{selected_id}'""")
+         
+
+         get_student_pic = fectch_student_data(f"""
+SELECT image FROM data WHERE id_number =='{selected_id}'""")
+         student_pic = BytesIO(get_student_pic[0][0])
+         
+
+         student_details =f"""
+{selected_id}
+{get_student_details[0][0]}
+{get_student_details[0][2]}
+{get_student_details[0][1]}
+{get_student_details[0][3]}
+{get_student_details[0][4]}
+{get_student_details[0][5]}
+"""
+         student_card_image_obj = draw_student_card(studentpicpath=student_pic,
+                                                 student_data=student_details)
+         student_cardd(student_carb_obj=student_card_image_obj, bypass_login_page=True)
+
+        
+      search_filters = ['ID', 'Name', 'Class', 'Gender']
+      find_student_pagefm = tk.Frame(pages_fm)
+      find_student_pagefm.pack(fill=tk.BOTH, expand=True)
+
+
+
+      find_student_record_lb = tk.Label(find_student_pagefm,
+                                        text=' Find Student Record ', font=('Bold', 13),
+                                        fg='white', bg=bg_color)
+      find_student_record_lb.place(x=20, y=10, width=300)
+
+      find_by_lb = tk.Label(find_student_pagefm, text='Find By ;', font=('Bold', 12))
+      find_by_lb.place(x=15, y=50)
+
+      find_by_option_btn = Combobox(find_student_pagefm, font=('Bold', 12), 
+                                    state='readonly', values=search_filters)
+      find_by_option_btn.place(x=80, y=50, width=80)
+      find_by_option_btn.set('ID')
+      
+      search_input = tk.Entry(find_student_pagefm, font=('Bold', 12))
+      search_input.place(x=20, y=90)
+      search_input.bind('<KeyRelease>', lambda e: find_student())
+
+      record_table_lb = tk.Label(find_student_pagefm, text='Record Table', font=('Bold', 13), bg=bg_color, fg='white')
+      record_table_lb.place(x=20, y=160, width=300)
+
+      record_table = Treeview(find_student_pagefm)
+      record_table.place(x=0, y=200, width=350)
+      record_table.bind('<<TreeviewSelect>>',
+                        lambda e: generate_student_card_btn.config(state=tk.NORMAL))
+
+      record_table['columns'] = ('id', 'name', 'class','gender')
+      record_table.column('#0', stretch=tk.NO, width=0)
+
+      record_table.heading('id', text='ID Number' ,anchor=tk.W)
+      record_table.column('id', width=50, anchor=tk.W)
+
+      record_table.heading('name', text='Name' ,anchor=tk.W)
+      record_table.column('name', width=50, anchor=tk.W)
+
+      record_table.heading('class', text='Class' ,anchor=tk.W)
+      record_table.column('class', width=50, anchor=tk.W)
+
+      record_table.heading('gender', text='Gender' ,anchor=tk.W)
+      record_table.column('gender', width=50, anchor=tk.W)
+
+      generate_student_card_btn = tk.Button(find_student_pagefm, text='Generate Student Card',
+                                            font=('Bold', 13), bg=bg_color, fg='white', state=tk.DISABLED, command=genrate_student_card)
+      generate_student_card_btn.place(x=160, y=450)
+      def clear_results(): 
+            find_by_option_btn.set('id')
+            search_input.delete(0, tk.END)
+
+            for item in record_table.get_children():
+               record_table.delete(item)
+
+               generate_student_card_btn.config(state=tk.DISABLED)
+
+      clear_btn = tk.Button(find_student_pagefm, text='Clear', font=('Bold', 13), 
+                            bg=bg_color, fg='white', command=clear_results)
+      clear_btn.place(x=10, y=450)
+         
+     
+   dashboard_fm = tk.Frame(root, highlightbackground=bg_color,
+                           highlightthickness=3)
+   
+   options_fm = tk.Frame(dashboard_fm, highlightbackground=bg_color,
+                         highlightthickness=2, bg='#c3c3c3')
+   home_btn = tk.Button(options_fm, text='Home', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, command=lambda: switch(indicator=home_btn_indicator, page=home_page))
+   home_btn.place(x=10, y=50)
+   
+   home_btn_indicator = tk.Label(options_fm, text='', bg= bg_color)
+   home_btn_indicator.place(x=5, y=48, width=3, height=40 )
+
+   
+
+   
+   find_student_btn = tk.Button(options_fm, text='Find\nStudent', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command=lambda: switch(indicator=find_student_btn_indicator, page=find_student_page))
+   find_student_btn.place(x=10, y=100)
+   
+   find_student_btn_indicator = tk.Label(options_fm, text='', bg= '#c3c3c3')
+   find_student_btn_indicator.place(x=5, y=108, width=3, height=40 )
+
+   announcement_btn = tk.Button(options_fm, text='Announce\n-ment📢', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command= lambda : switch(indicator=announcement_btn_indicator, page=announcement_page))
+   announcement_btn.place(x=10, y=170) 
+   
+   announcement_btn_indicator = tk.Label(options_fm, text='', bg= '#c3c3c3')
+   announcement_btn_indicator.place(x=5, y=180, width=3, height=40 )
+
+   send_results_btn = tk.Button(options_fm, text='Send\nResults', font=('Bold', 15),
+                                 fg=bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT,
+                                 command=lambda: switch(indicator=send_results_btn_indicator, page=send_results_page))
+   send_results_btn.place(x=10, y=270)
+
+   send_results_btn_indicator = tk.Label(options_fm, text='', bg='#c3c3c3')
+   send_results_btn_indicator.place(x=5, y=248, width=3, height=40)
+
+   logout_btn = tk.Button(options_fm, text='Logout', font=('Bold', 15),
+                        fg= bg_color, bg='#c3c3c3', bd=0, justify=tk.LEFT, command=logout)
+   logout_btn.place(x=10, y=500)
+   
    
 
    pages_fm = tk.Frame(dashboard_fm,bg='gray')
    pages_fm.place(x=122, y=5, width=350, height=550)
-   home_page()
+   #home_page()
+
+
+   
    options_fm.place(x=0,y=0, width=120, height=575)
 
    dashboard_fm.pack(pady=5)
    dashboard_fm.pack_propagate(False)
    dashboard_fm.configure(width=480, height=580)
+   home_page()
 def admin_login_page():
     def show_hide_password():
         if password_entry['show'] == "*":
@@ -1008,9 +1274,10 @@ def add_account_page():
        
 
     def check_invalid_email(email):
-        pattern =  "^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$'"
+        pattern = r'^[_a-z0-9-]+(\.[_a-z0-9-]+)*@[a-z0-9-]+(\.[a-z0-9-]+)*(\.[a-z]{2,4})$'
         match = re.match(pattern=pattern, string=email)
         return match
+
     def generate_id_number():
        generate_id = ''
 
@@ -1057,16 +1324,17 @@ def add_account_page():
           
           message_box(message="Student Email is Required")
 
-      #  elif not check_invalid_email(student_name_entry.get().lower()):
-      #      print(student_emailentry.get())
-      #      student_emailentry.config(highlightcolor='red',
-      #                                highlightbackground='red' )
-      #      student_name_entry.focus()
+       elif  not check_invalid_email(email=student_emailentry.get().lower()):
+           
+           student_emailentry.config(highlightcolor='red',
+                                     highlightbackground='red' )
+           message_box('invalid email')
+           student_name_entry.focus()
            
 
 
        elif account_passwordentry.get() == '':
-          account_passwordentry. cofig(highlightcolor='red', highlightbackground= 'red')
+          account_passwordentry. config(highlightcolor='red', highlightbackground= 'red')
           account_passwordentry.get()
           message_box(message="Password is Required")
 
